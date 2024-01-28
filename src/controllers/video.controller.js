@@ -10,6 +10,38 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+
+
+    const sortOptions = (sortBy = 'title' , sortType = 'asce') => {
+        return sortType === 'desc'?{[sortBy] : -1} : {[sortBy] : 1}
+    }
+
+    const videos = await Video.aggregate([
+        {
+            $match : {
+                
+                $or : [{ title : {$regex : query , $options : "i"} }, { description : {$regex : query, $options : "i"} }],
+                owner : mongoose.Types.ObjectId(userId)
+
+            }
+        },
+        {
+            $sort : sortOptions(sortBy , sortType),
+        },
+        {
+            $skip : (page - 1)* limit,
+        },
+        {
+            $limit : paresInt(limit),
+        }
+    ])
+
+    if(!videos)
+    {
+        throw new ApiError(500 , "Cannot fetch videos.")
+    }
+
+    return res.status(200).json(new ApiResponse(200 , videos , "videos fetched successfully."))
     
 })
 
@@ -39,7 +71,9 @@ const publishAVideo = asyncHandler(async (req, res) => {
         thumbnail: thumbnail.url,
         description,
         views: 0,
-        owner: user
+        owner: user,
+        cloudinaryVideoId : video.public_id,
+        cloudinaryThumbnailId : thumbnail.public_id,
     })
 
     if (!videoModel) {
@@ -76,10 +110,13 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (video.owner.toString !== user.toString()) {
         throw new ApiError(401, "Unauthorized person cant update video.")
     }
-    const thumbnail = uploadOnCloudinary(req.file?.thumbnail[0]?.path);
+    const thumbnail = uploadOnCloudinary(req.file.path);
 
     if (!thumbnail) {
         thumbnail = { url: video.thumbnail };
+    }
+    else{
+        
     }
 
     const updatedVideo = await Video.findByIdAndUpdate(videoId,
