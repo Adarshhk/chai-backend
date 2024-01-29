@@ -4,16 +4,18 @@ import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
-import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary , deleteFromCloudinary } from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
 
+    const sortOptions = {};
 
-    const sortOptions = (sortBy = 'title' , sortType = 'asce') => {
-        return sortType === 'desc'?{[sortBy] : -1} : {[sortBy] : 1}
+    if(sortBy)
+    {
+        sortOptions[sortBy] = sortType === 'desc'? -1 : 1; 
     }
 
     const videos = await Video.aggregate([
@@ -26,7 +28,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
             }
         },
         {
-            $sort : sortOptions(sortBy , sortType),
+            $sort : sortOptions,
         },
         {
             $skip : (page - 1)* limit,
@@ -66,11 +68,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
     }
 
     const videoModel = await Video.create({
+        title,
         duration: video.duration,
         videoFile: video.url,
         thumbnail: thumbnail.url,
         description,
-        views: 0,
         owner: user,
         cloudinaryVideoId : video.public_id,
         cloudinaryThumbnailId : thumbnail.public_id,
@@ -105,19 +107,24 @@ const updateVideo = asyncHandler(async (req, res) => {
     //TODO: update video details like title, description, thumbnail
     const { title, description } = req.body;
     const user = req.user?._id;
+
     const video = await Video.findById(videoId);
 
     if (video.owner.toString !== user.toString()) {
         throw new ApiError(401, "Unauthorized person cant update video.")
     }
-    const thumbnail = uploadOnCloudinary(req.file.path);
 
-    if (!thumbnail) {
-        thumbnail = { url: video.thumbnail };
+    const thumbnailLocalPath = req.file?.path;
+    if (!thumbnailLocalPath) {
+        throw new ApiError(404,"Thumbnail file not found.")
     }
-    else{
-        
-    }
+    
+        const deleteThumbnail = await deleteFromCloudinary(cloudinaryThumbnailId);
+        if(!deleteThumbnail)
+        {
+            throw new ApiError(500 , "Cannot delete old thumbnail while updating thumbnail.")
+        }
+        const thumbnail = uploadOnCloudinary(thumbnailLocalPath);
 
     const updatedVideo = await Video.findByIdAndUpdate(videoId,
         {
@@ -125,6 +132,7 @@ const updateVideo = asyncHandler(async (req, res) => {
                 title,
                 description,
                 thumbnail: thumbnail.url,
+                cloudinaryThumbnailId : thumbnail.public_id,
             },
         },
         {
@@ -153,13 +161,15 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(402, "Unauthorized user trying to delete video.")
     }
 
-    const deletedVideo = await Video.findByIdAndDelete(videoId);
-
-    if (!deletedVideo) {
-        throw new ApiError(500, "Error occured while deleting video.")
+    try {
+        const deleteThumbnail = await deleteFromCloudinary(video.cloudinaryThumbnailId)
+        const deletedVideoFromCloud = await deleteFromCloudinary(video.cloudinaryVideoId)
+        const deletedVideo = await Video.findByIdAndDelete(videoId);
+    } catch (error) {
+        throw new ApiError(500 , "some error occured while deleting video.")
     }
 
-    return res.status(200).json(new ApiResponse(200, deletedVideo, "Video deleted Successfully."))
+    return res.status(200).json(new ApiResponse(200, {} , "Video deleted Successfully."))
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
