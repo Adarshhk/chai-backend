@@ -17,12 +17,12 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     const subCheck = await Subscription.aggregate([
         {
             $match: {
-                channel: mongoose.Types.ObjectId(channelId),
+                channel: new mongoose.Types.ObjectId(channelId),
             }
         },
         {
             $match: {
-                subscriber: mongoose.Types.ObjectId(userId),
+                subscriber: new mongoose.Types.ObjectId(userId),
             }
         }
     ])

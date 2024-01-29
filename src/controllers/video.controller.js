@@ -4,7 +4,7 @@ import { User } from "../models/user.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
-import { uploadOnCloudinary , deleteFromCloudinary } from "../utils/cloudinary.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -13,38 +13,36 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     const sortOptions = {};
 
-    if(sortBy)
-    {
-        sortOptions[sortBy] = sortType === 'desc'? -1 : 1; 
+    if (sortBy) {
+        sortOptions[sortBy] = sortType === 'desc' ? -1 : 1;
     }
 
     const videos = await Video.aggregate([
         {
-            $match : {
-                
-                $or : [{ title : {$regex : query , $options : "i"} }, { description : {$regex : query, $options : "i"} }],
-                owner : mongoose.Types.ObjectId(userId)
+            $match: {
+
+                $or: [{ title: { $regex: query, $options: "i" } }, { description: { $regex: query, $options: "i" } }],
+                owner: new mongoose.Types.ObjectId(userId)
 
             }
         },
         {
-            $sort : sortOptions,
+            $sort: sortOptions,
         },
         {
-            $skip : (page - 1)* limit,
+            $skip: (page - 1) * limit,
         },
         {
-            $limit : paresInt(limit),
+            $limit: paresInt(limit),
         }
     ])
 
-    if(!videos)
-    {
-        throw new ApiError(500 , "Cannot fetch videos.")
+    if (!videos) {
+        throw new ApiError(500, "Cannot fetch videos.")
     }
 
-    return res.status(200).json(new ApiResponse(200 , videos , "videos fetched successfully."))
-    
+    return res.status(200).json(new ApiResponse(200, videos, "videos fetched successfully."))
+
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -66,7 +64,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if (!video || !thumbnail) {
         throw new ApiError(500, "Error while uploading video.")
     }
-
+    console.log(video);
+    console.log(thumbnail);
     const videoModel = await Video.create({
         title,
         duration: video.duration,
@@ -74,8 +73,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
         thumbnail: thumbnail.url,
         description,
         owner: user,
-        cloudinaryVideoId : video.public_id,
-        cloudinaryThumbnailId : thumbnail.public_id,
+        cloudinaryVideoId: video.public_id,
+        cloudinaryThumbnailId: thumbnail.public_id,
     })
 
     if (!videoModel) {
@@ -110,21 +109,22 @@ const updateVideo = asyncHandler(async (req, res) => {
 
     const video = await Video.findById(videoId);
 
-    if (video.owner.toString !== user.toString()) {
+
+    if (video.owner.toString() !== user.toString()) {
         throw new ApiError(401, "Unauthorized person cant update video.")
     }
 
     const thumbnailLocalPath = req.file?.path;
     if (!thumbnailLocalPath) {
-        throw new ApiError(404,"Thumbnail file not found.")
+        throw new ApiError(404, "Thumbnail file not found.")
     }
-    
-        const deleteThumbnail = await deleteFromCloudinary(cloudinaryThumbnailId);
-        if(!deleteThumbnail)
-        {
-            throw new ApiError(500 , "Cannot delete old thumbnail while updating thumbnail.")
-        }
-        const thumbnail = uploadOnCloudinary(thumbnailLocalPath);
+
+    console.log(video)
+    const deleteThumbnail = await deleteFromCloudinary(video.cloudinaryThumbnailId);
+    if (!deleteThumbnail) {
+        throw new ApiError(500, "Cannot delete old thumbnail while updating thumbnail.")
+    }
+    const thumbnail = uploadOnCloudinary(thumbnailLocalPath);
 
     const updatedVideo = await Video.findByIdAndUpdate(videoId,
         {
@@ -132,7 +132,7 @@ const updateVideo = asyncHandler(async (req, res) => {
                 title,
                 description,
                 thumbnail: thumbnail.url,
-                cloudinaryThumbnailId : thumbnail.public_id,
+                cloudinaryThumbnailId: thumbnail.public_id,
             },
         },
         {
@@ -166,10 +166,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
         const deletedVideoFromCloud = await deleteFromCloudinary(video.cloudinaryVideoId)
         const deletedVideo = await Video.findByIdAndDelete(videoId);
     } catch (error) {
-        throw new ApiError(500 , "some error occured while deleting video.")
+        throw new ApiError(500, "some error occured while deleting video.")
     }
 
-    return res.status(200).json(new ApiResponse(200, {} , "Video deleted Successfully."))
+    return res.status(200).json(new ApiResponse(200, {}, "Video deleted Successfully."))
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
@@ -196,12 +196,11 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
             new: true,
         })
 
-        if(!updateVideoStatus)
-        {
-            throw new ApiError(500 , "Error occured while updating video status.")
-        }
+    if (!updateVideoStatus) {
+        throw new ApiError(500, "Error occured while updating video status.")
+    }
 
-        return res.status(200).json(new ApiResponse(200 , updateVideoStatus , "Video status updated."))
+    return res.status(200).json(new ApiResponse(200, updateVideoStatus, "Video status updated."))
 })
 
 export {

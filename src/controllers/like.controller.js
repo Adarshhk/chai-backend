@@ -25,12 +25,12 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     const likedVideo = await Like.aggregate([
         {
             $match : {
-                likedBy : mongoose.Types.ObjectId(userId),
+                likedBy : new mongoose.Types.ObjectId(userId),
             }
         },
         {
             $match : {
-                video : mongoose.Types.ObjectId(videoId)
+                video : new mongoose.Types.ObjectId(videoId)
             }
         }
     ])
@@ -85,10 +85,10 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 
     const liked = await Like.aggregate([
         {
-            $match : {likedBy : mongoose.Types.ObjectId(userId)}
+            $match : {likedBy : new mongoose.Types.ObjectId(userId)}
         },
         {
-            $match : {comment : mongoose.Types.ObjectId(commentId)}
+            $match : {comment : new mongoose.Types.ObjectId(commentId)}
         }
     ])
 
@@ -143,10 +143,10 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     }
     const liked = await Like.aggregate([
         {
-            $match : {likedBy : mongoose.Types.ObjectId(userId)}
+            $match : {likedBy : new mongoose.Types.ObjectId(userId)}
         },
         {
-            $match : {tweet : mongoose.Types.ObjectId(tweetId)}
+            $match : {tweet : new mongoose.Types.ObjectId(tweetId)}
         }
     ])
 
@@ -197,7 +197,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
 
     const likedVideos = await Like.aggregate([
         {
-            $match : {likedBy : mongoose.Types.ObjectId(userId)}
+            $match : {likedBy : new mongoose.Types.ObjectId(userId)}
         },
         {
            $match : {

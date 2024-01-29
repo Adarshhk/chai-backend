@@ -35,11 +35,13 @@ const videoSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "User"
         },
-        cloundinaryVideoId : {
+        cloudinaryVideoId : {
             type : String,
+            required : true,
         },
-        cloundinaryThumbnailId : {
+        cloudinaryThumbnailId : {
             type : String,
+            required : true,
         }
 
     }, 
